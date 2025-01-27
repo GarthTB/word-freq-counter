@@ -18,7 +18,7 @@ fn main() {
         println!("额外字符（共{}个）：{:?}", extra_chars.len(), extra_chars);
         println!();
 
-        core::count(&corpus_path, &output_path, word_len, threshold, extra_chars);
+        core::run(&corpus_path, &output_path, word_len, threshold, extra_chars);
 
         println!("输入y以进行新一轮统计...");
         if init::get_input(true) != "y" {
