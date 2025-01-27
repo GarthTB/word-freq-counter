@@ -9,14 +9,14 @@ fn main() {
         let threshold = init::get_threshold();
         let extra_chars = init::get_extra_chars();
 
-        println!();
+        println!("---");
         println!("使用参数：");
         println!("语料文件路径：{}", corpus_path.display());
         println!("输出文件路径：{}", output_path.display());
         println!("词长：{word_len}");
         println!("词频阈值：{threshold}");
         println!("额外字符（共{}个）：{:?}", extra_chars.len(), extra_chars);
-        println!();
+        println!("---");
 
         core::run(&corpus_path, &output_path, word_len, threshold, extra_chars);
 

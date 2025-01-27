@@ -33,7 +33,7 @@ fn count(
     println!("正在进行第一轮统计...");
     let base_word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
     let file = File::open(corpus_path).expect("无法打开语料文件");
-    BufReader::new(&file).lines().par_bridge().for_each(|line| {
+    BufReader::new(file).lines().par_bridge().for_each(|line| {
         let mut word_buffer = VecDeque::with_capacity(word_len);
         for c in line.expect("无法读取语料文件的一行").chars() {
             if is_invalid_char(c) {
@@ -53,7 +53,8 @@ fn count(
     println!("第一轮统计完成，正在进行第二轮统计...");
     let word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
     let window_size = word_len * 2 - 1;
-    BufReader::new(&file).lines().par_bridge().for_each(|line| {
+    let file = File::open(corpus_path).expect("无法打开语料文件");
+    BufReader::new(file).lines().par_bridge().for_each(|line| {
         let mut window = VecDeque::with_capacity(window_size);
         for c in line.expect("无法读取语料文件的一行").chars() {
             if is_invalid_char(c) {
@@ -64,8 +65,8 @@ fn count(
             if window.len() == window_size {
                 let mut max_word = "".to_string();
                 let mut max_freq = 0;
-                for i in 0..word_len {
-                    let word: String = window.iter().skip(i).take(word_len).collect();
+                for _ in 0..word_len {
+                    let word: String = window.iter().take(word_len).collect();
                     let freq = base_word_freq
                         .get(&word)
                         .map(|f| f.load(Ordering::Relaxed))
