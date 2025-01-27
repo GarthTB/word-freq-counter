@@ -1,7 +1,7 @@
 use dashmap::DashMap;
 use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
-use std::collections::{HashSet, VecDeque};
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
@@ -32,41 +32,39 @@ fn count(
 ) -> DashMap<String, AtomicUsize> {
     println!("正在进行第一轮统计...");
     let base_word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
+    let bare_word_len = word_len - 1;
     let file = File::open(corpus_path).expect("无法打开语料文件");
     BufReader::new(file).lines().par_bridge().for_each(|line| {
-        let mut word_buffer = VecDeque::with_capacity(word_len);
-        for c in line.expect("无法读取语料文件的一行").chars() {
-            if is_invalid_char(c) {
-                word_buffer.clear();
-            } else {
-                word_buffer.push_back(c);
-            }
-            if word_buffer.len() == word_len {
+        let chars: Vec<_> = line.expect("无法读取语料文件的一行").chars().collect();
+        let mut head = 0;
+        for tail in 0..chars.len() {
+            if is_invalid_char(chars[tail]) {
+                head = tail + 1;
+            } else if tail - head == bare_word_len {
                 base_word_freq
-                    .entry(word_buffer.iter().collect())
+                    .entry(chars[head..tail + 1].iter().collect())
                     .or_insert(AtomicUsize::new(0))
                     .fetch_add(1, Ordering::Relaxed);
-                word_buffer.pop_front();
+                head += 1;
             }
         }
     });
     println!("第一轮统计完成，正在进行第二轮统计...");
     let word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
-    let window_size = word_len * 2 - 1;
+    let bare_window_size = bare_word_len * 2;
     let file = File::open(corpus_path).expect("无法打开语料文件");
     BufReader::new(file).lines().par_bridge().for_each(|line| {
-        let mut window = VecDeque::with_capacity(window_size);
-        for c in line.expect("无法读取语料文件的一行").chars() {
-            if is_invalid_char(c) {
-                window.clear();
-            } else {
-                window.push_back(c);
-            }
-            if window.len() == window_size {
+        let chars: Vec<_> = line.expect("无法读取语料文件的一行").chars().collect();
+        let mut head = 0;
+        for tail in 0..chars.len() {
+            if is_invalid_char(chars[tail]) {
+                head = tail + 1;
+            } else if tail - head == bare_window_size {
+                let window = &chars[head..tail + 1];
                 let mut max_word = "".to_string();
                 let mut max_freq = 0;
-                for _ in 0..word_len {
-                    let word: String = window.iter().take(word_len).collect();
+                for i in 0..word_len {
+                    let word = window[i..i + word_len].iter().collect();
                     let freq = base_word_freq
                         .get(&word)
                         .map(|f| f.load(Ordering::Relaxed))
@@ -75,8 +73,8 @@ fn count(
                         max_word = word;
                         max_freq = freq;
                     }
-                    window.pop_front();
                 }
+                head += word_len;
                 if max_freq > threshold {
                     word_freq
                         .entry(max_word)
