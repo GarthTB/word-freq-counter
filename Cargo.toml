@@ -11,3 +11,5 @@ readme = "README.md"
 categories = ["command-line-utilities"]
 
 [dependencies]
+dashmap = "6"
+rayon = "1"
