@@ -30,7 +30,7 @@ fn count(
     threshold: usize,
     is_invalid_char: impl Fn(char) -> bool + Sync,
 ) -> DashMap<String, AtomicUsize> {
-    println!("正在进行第一轮统计...");
+    println!("第一轮统计中...");
     let base_word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
     let bare_word_len = word_len - 1;
     let file = File::open(corpus_path).expect("无法打开语料文件");
@@ -49,7 +49,11 @@ fn count(
             }
         }
     });
-    println!("第一轮统计完成，正在进行第二轮统计...");
+    println!("统计完成，初步过滤中...");
+    if threshold > 0 {
+        base_word_freq.retain(|_, freq| freq.load(Ordering::Relaxed) > threshold);
+    }
+    println!("过滤完成，第二轮统计中...");
     let word_freq: DashMap<String, AtomicUsize> = DashMap::with_capacity(8192);
     let bare_window_size = bare_word_len * 2;
     let file = File::open(corpus_path).expect("无法打开语料文件");
@@ -65,13 +69,11 @@ fn count(
                 let mut max_freq = 0;
                 for i in 0..word_len {
                     let word = window[i..i + word_len].iter().collect();
-                    let freq = base_word_freq
-                        .get(&word)
-                        .map(|f| f.load(Ordering::Relaxed))
-                        .expect("第一轮统计结果中缺少词。这是不该出现的错误。请联系开发者。");
-                    if freq > max_freq {
-                        max_word = word;
-                        max_freq = freq;
+                    if let Some(freq) = base_word_freq.get(&word).map(|f| f.load(Ordering::Relaxed)) {
+                        if freq > max_freq {
+                            max_word = word;
+                            max_freq = freq;
+                        }
                     }
                 }
                 head += word_len;
@@ -84,7 +86,7 @@ fn count(
             }
         }
     });
-    println!("第二轮统计完成。");
+    println!("统计完成。");
     word_freq
 }
 
@@ -93,7 +95,7 @@ fn filter_sort_save(
     threshold: usize,
     output_path: &PathBuf,
 ) {
-    println!("正在过滤条目...");
+    println!("过滤条目中...");
     let mut entries: Vec<_> = word_freq
         .iter()
         .filter_map(|entry| {
@@ -106,9 +108,9 @@ fn filter_sort_save(
             }
         })
         .collect();
-    println!("过滤完成，正在排序...");
+    println!("过滤完成，排序中...");
     entries.sort_by(|(_, a_val), (_, b_val)| b_val.cmp(a_val));
-    println!("排序完成，正在输出文件...");
+    println!("排序完成，输出中...");
     let content = entries
         .into_iter()
         .map(|(word, freq)| format!("{word}\t{freq}"))
@@ -119,5 +121,5 @@ fn filter_sort_save(
     writer
         .write_all(content.as_bytes())
         .expect("无法写入结果文件");
-    println!("已成功保存结果文件。统计结束。");
+    println!("结果保存成功。统计结束。");
 }
