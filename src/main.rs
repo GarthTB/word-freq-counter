@@ -20,8 +20,8 @@ fn main() {
 
         core::count(&corpus_path, &output_path, word_len, threshold, extra_chars);
 
-        println!("按y键进行新一轮统计...");
-        if init::get_input() != "y" {
+        println!("输入y以进行新一轮统计...");
+        if init::get_input(true) != "y" {
             break;
         }
     }
