@@ -3,7 +3,7 @@ use rayon::iter::ParallelBridge;
 use rayon::iter::ParallelIterator;
 use std::collections::{HashSet, VecDeque};
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -14,13 +14,29 @@ pub(crate) fn count(
     threshold: usize,
     extra_chars: HashSet<char>,
 ) {
-    let is_invalid_char = |c| {
-        if extra_chars.is_empty() {
-            c < '一' || c > '鿿'
-        } else {
-            (c < '一' || c > '鿿') && !extra_chars.contains(&c)
-        }
-    };
+    let last_word_freq;
+    if extra_chars.is_empty() {
+        let is_invalid_char = |c| c < '一' || c > '鿿';
+        let base_word_freq = traverse_corpus(corpus_path, word_len, is_invalid_char);
+        last_word_freq = local_pick(
+            &base_word_freq,
+            corpus_path,
+            word_len,
+            threshold,
+            is_invalid_char,
+        );
+    } else {
+        let is_invalid_char = |c| (c < '一' || c > '鿿') && !extra_chars.contains(&c);
+        let base_word_freq = traverse_corpus(corpus_path, word_len, is_invalid_char);
+        last_word_freq = local_pick(
+            &base_word_freq,
+            corpus_path,
+            word_len,
+            threshold,
+            is_invalid_char,
+        );
+    }
+    filter_sort_save(&last_word_freq, threshold, output_path);
 }
 
 fn traverse_corpus(
@@ -93,4 +109,36 @@ fn local_pick(
         }
     });
     word_freq
+}
+
+fn filter_sort_save(
+    word_freq: &DashMap<String, AtomicUsize>,
+    threshold: usize,
+    output_path: &PathBuf,
+) {
+    let mut entries: Vec<_> = word_freq
+        .iter()
+        .filter_map(|entry| {
+            let word = entry.key().clone();
+            let freq = entry.value().load(Ordering::Relaxed);
+            if freq > threshold {
+                Some((word, freq))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    entries.sort_by(|(_, a_val), (_, b_val)| b_val.cmp(a_val));
+
+    let content = entries
+        .into_iter()
+        .map(|(word, freq)| format!("{word}\t{freq}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let file = File::create(output_path).expect("无法创建结果文件");
+    let mut writer = BufWriter::new(file);
+    writer
+        .write_all(content.as_bytes())
+        .expect("无法写入结果文件");
 }
