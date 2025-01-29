@@ -55,7 +55,7 @@ pub(crate) fn get_output_path(corpus_path: &Path, word_len: usize) -> PathBuf {
 }
 
 pub(crate) fn get_threshold() -> usize {
-    println!("请输入词频阈值。此次数及以下的词将被忽略，留空则默认为1：");
+    println!("请输入词频阈值。此次数及以下的词将被忽略。留空则默认为1：");
     loop {
         let input = get_input(true);
         if input.is_empty() {
@@ -68,7 +68,7 @@ pub(crate) fn get_threshold() -> usize {
 }
 
 pub(crate) fn get_extra_chars() -> HashSet<char> {
-    println!("请输入要纳入统计的除中文外的其他字符，回车结束。若无请留空：");
+    println!("请输入要纳入统计的除中文外的其他字符。以回车结束。若无请留空：");
     let mut extra_chars = HashSet::new();
     for c in get_input(false).chars() {
         if c != '\r' && c != '\n' && c < '一' || c > '鿿' {
