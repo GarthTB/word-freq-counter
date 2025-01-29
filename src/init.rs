@@ -1,19 +1,17 @@
 ﻿use std::collections::HashSet;
-use std::io::stdin;
 use std::path::{Path, PathBuf};
 
 pub(crate) fn get_input(need_trim: bool) -> String {
     let mut input = String::new();
     loop {
-        if let Ok(_) = stdin().read_line(&mut input) {
+        if std::io::stdin().read_line(&mut input).is_ok() {
             return if need_trim {
                 input.trim().to_string()
             } else {
                 input
             };
-        } else {
-            println!("错误：无法读取输入，请重新输入。");
         }
+        println!("错误：无法读取输入。请重新输入。");
     }
 }
 
@@ -23,9 +21,8 @@ pub(crate) fn get_corpus_path() -> PathBuf {
         let path = PathBuf::from(get_input(true));
         if path.exists() {
             return path;
-        } else {
-            println!("错误：文件不存在，请重新输入。");
         }
+        println!("错误：文件不存在。请重新输入。");
     }
 }
 
@@ -35,12 +32,9 @@ pub(crate) fn get_word_len() -> usize {
         if let Ok(word_len) = get_input(true).parse() {
             if word_len > 0 {
                 return word_len;
-            } else {
-                println!("错误：词长必须大于0，请重新输入。");
             }
-        } else {
-            println!("错误：无法解析输入的数字，请重新输入。");
         }
+        println!("错误：必须为正整数。请重新输入。");
     }
 }
 
@@ -61,16 +55,15 @@ pub(crate) fn get_output_path(corpus_path: &Path, word_len: usize) -> PathBuf {
 }
 
 pub(crate) fn get_threshold() -> usize {
-    println!("请输入词频阈值，此次数及以下的词将被忽略，留空则默认为1：");
+    println!("请输入词频阈值。此次数及以下的词将被忽略，留空则默认为1：");
     loop {
         let input = get_input(true);
         if input.is_empty() {
             return 1;
         } else if let Ok(threshold) = input.parse() {
             return threshold;
-        } else {
-            println!("错误：无法解析输入的数字，请重新输入。");
         }
+        println!("错误：必须为非负整数。请重新输入。");
     }
 }
 
